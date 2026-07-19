@@ -4,7 +4,6 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>VR 렌즈 심화탐구 시뮬레이션 — 30807 김시우</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#F7F6F2; --surface:#FFFFFF; --surface-2:#F1EFE8;
@@ -75,8 +74,6 @@
   .bar-fill{ height:100%; }
   .bar-teal{ background:var(--teal); }
   .bar-amber{ background:var(--amber); }
-
-  .chart-wrap{ position:relative; height:260px; margin:1.25rem 0; }
 
   .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
   .two-col p.cap{ font-size:12px; color:var(--text-2); text-align:center; margin:0 0 6px; }
@@ -151,8 +148,6 @@
         <span id="trans-out">50%</span>
       </div>
 
-      <div class="chart-wrap"><canvas id="tradeoff-chart"></canvas></div>
-
       <div class="stat-grid">
         <div class="stat"><p class="label">두께 (0회 대비)</p><p class="val" id="thick-out">100%</p></div>
         <div class="stat"><p class="label">광 효율</p><p class="val" id="eff-out">100%</p></div>
@@ -203,7 +198,6 @@
     b.classList.add('active');
     const idx = parseInt(b.dataset.tab);
     panels.forEach((p,i)=>p.classList.toggle('active', i===idx));
-    if(idx===1 && window.tradeoffChart){ window.tradeoffChart.resize(); }
   }));
 
   const ns='http://www.w3.org/2000/svg';
@@ -280,22 +274,10 @@
   document.querySelector('.lens-btn[data-lens="fresnel"]').classList.add('active');
   drawLens('fresnel');
 
-  // ---------- Panel 2 (numbers + bars, independent of chart library) ----------
+  // ---------- Panel 2 (numbers + bars only, no chart) ----------
   const foldSlider = document.getElementById('fold-slider');
   const transSlider = document.getElementById('trans-slider');
-  const nRange = []; for(let n=0;n<=3;n+=0.1) nRange.push(Math.round(n*10)/10);
 
-  function computeCurves(t){
-    return {
-      thickness: nRange.map(n => 100/(n+1)),
-      efficiency: nRange.map(n => 100*Math.pow(t,n))
-    };
-  }
-  function nearestIdx(n){
-    let best=0, bd=Infinity;
-    nRange.forEach((v,i)=>{ const dd=Math.abs(v-n); if(dd<bd){bd=dd;best=i;} });
-    return best;
-  }
   function updateFold(){
     const n = parseFloat(foldSlider.value);
     const t = parseFloat(transSlider.value)/100;
@@ -313,18 +295,6 @@
     document.getElementById('power-out').textContent = '+'+power+'%';
     document.getElementById('bar-thick').style.width = thick+'%';
     document.getElementById('bar-eff').style.width = Math.min(eff,100)+'%';
-
-    if(window.tradeoffChart){
-      const curves = computeCurves(t);
-      window.tradeoffChart.data.datasets[0].data = curves.thickness;
-      window.tradeoffChart.data.datasets[1].data = curves.efficiency;
-      const idx = nearestIdx(n);
-      window.tradeoffChart.data.datasets[2].data = [
-        { x: idx, y: curves.thickness[idx] },
-        { x: idx, y: curves.efficiency[idx] }
-      ];
-      window.tradeoffChart.update();
-    }
   }
   foldSlider.addEventListener('input', updateFold);
   transSlider.addEventListener('input', updateFold);
@@ -375,38 +345,6 @@
   }
   distSlider.addEventListener('input', updateDist);
   updateDist();
-
-  // ---------- Chart.js (optional enhancement; guarded so a CDN failure can't break panels above) ----------
-  try{
-    const t = parseFloat(transSlider.value)/100;
-    const curves0 = computeCurves(t);
-    const ctx = document.getElementById('tradeoff-chart').getContext('2d');
-    window.tradeoffChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: nRange,
-        datasets: [
-          { label:'두께 비율(%)', data: curves0.thickness, borderColor:'#0F6E56', backgroundColor:'transparent', borderWidth:2, pointRadius:0, tension:0.15 },
-          { label:'광 효율(%)', data: curves0.efficiency, borderColor:'#BA7517', backgroundColor:'transparent', borderWidth:2, pointRadius:0, tension:0.15 },
-          { label:'현재 값', data: [], borderColor:'#185FA5', backgroundColor:'#185FA5', borderWidth:0, pointRadius:5, showLine:false, type:'scatter' }
-        ]
-      },
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        interaction:{ mode:'index', intersect:false },
-        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{ size:11 }, color:'#5F5E5A' } } },
-        scales:{
-          x:{ title:{ display:true, text:'반사 횟수 n', color:'#5F5E5A', font:{size:11} }, ticks:{ color:'#8A887F', font:{size:10}, maxTicksLimit:7 }, grid:{ color:'#E3E1D8' } },
-          y:{ min:0, max:100, title:{ display:true, text:'%', color:'#5F5E5A', font:{size:11} }, ticks:{ color:'#8A887F', font:{size:10} }, grid:{ color:'#E3E1D8' } }
-        }
-      }
-    });
-    updateFold();
-  } catch(e){
-    const chartWrap = document.querySelector('.chart-wrap');
-    if(chartWrap){ chartWrap.innerHTML = '<p style="font-size:13px;color:var(--text-muted);text-align:center;padding-top:2rem;">그래프 라이브러리를 불러오지 못했습니다 (인터넷 연결을 확인해 주세요). 위·아래 숫자와 막대는 정상적으로 작동합니다.</p>'; }
-    console.error('Chart.js load/init failed:', e);
-  }
 })();
 </script>
 </body>
